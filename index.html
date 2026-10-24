@@ -1,20 +1,40 @@
-const webhook =
-  "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SitePreview Snapshot Diagnostic v5</title>
+</head>
+<body>
+  <h1>SitePreview Snapshot Diagnostic v5</h1>
+  <pre id="results"></pre>
 
-function report(event, value) {
-  const params = new URLSearchParams({
-    event,
-    value: String(value),
-    time: new Date().toISOString()
-  });
+  <script>
+    const webhook =
+      "https://webhook.site/b8808c81-3dc6-4355-b282-f10b6d73f792";
 
-  fetch(webhook + "?" + params, {
-    mode: "no-cors",
-    keepalive: true
-  }).catch(() => {});
-}
+    function report(event, value) {
+      const params = new URLSearchParams({
+        event,
+        value: String(value),
+        time: new Date().toISOString()
+      });
 
-report("page-loaded", location.href);
-report("webdriver", navigator.webdriver);
-report("referrer", document.referrer || "empty");
-report("visibility", document.visibilityState);
+      document.getElementById("results").textContent +=
+        event + ": " + value + "\n";
+
+      fetch(webhook + "?" + params.toString(), {
+        mode: "no-cors",
+        credentials: "omit",
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    report("v5-started", location.href);
+    report("v5-user-agent", navigator.userAgent);
+    report("v5-webdriver", navigator.webdriver);
+    report("v5-referrer", document.referrer || "empty");
+    report("v5-visibility", document.visibilityState);
+    report("v5-completed", "yes");
+  </script>
+</body>
+</html>
