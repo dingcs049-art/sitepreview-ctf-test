@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SitePreview Reviewer Test</title>
+</head>
+<body>
+  <h1>Reviewer Browser Test</h1>
+  <p>Testing JavaScript execution.</p>
+
+  <script>
+    const webhook =
+      "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
+
+    const params = new URLSearchParams({
+      event: "javascript-executed",
+      origin: location.origin,
+      ua: navigator.userAgent,
+      time: new Date().toISOString()
+    });
+
+    const beacon = new Image();
+    beacon.src = webhook + "?" + params.toString();
+
+    document.body.append(
+      "JavaScript executed successfully."
+    );
+  </script>
+</body>
+</html>
